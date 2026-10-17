@@ -16,6 +16,7 @@ Yol takip uygulaması.
 ​-%100 Gizli ve Yerel: Üçüncü taraf hiçbir veri toplama aracı içermez, internetiniz olmasa bile (kısmen) çalışır.
 
 ​+Kurulum
+
 -Apk dosyasını indirin ve kurun.
 
 ​-Uygulama açıldığında konum izni verin.
