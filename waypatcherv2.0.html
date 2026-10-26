@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WayPatcher - Ekmel Özalp</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#121212">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+        
+        #map { height: 40vh; width: 100%; background: #222; }
+        
+        /* Kontrol paneli */
+        .controls { flex: 1; padding: 12px; background: #1e1e1e; display: flex; flex-direction: column; gap: 10px; overflow: hidden; position: relative; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .stat-box { background: #2a2a2a; padding: 8px; border-radius: 8px; text-align: center; border-left: 3px solid #2979ff; }
+        .stat-box.top { border-left-color: #ff1744; }
+        .stat-box.dist { border-left-color: #00e676; }
+        .stat-box span { display: block; font-size: 0.70rem; color: #aaa; }
+        .stat-box strong { font-size: 1.1rem; color: #fff; }
+        
+        .btn-group { display: flex; gap: 8px; }
+        button { flex: 1; padding: 12px; font-size: 1rem; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; transition: background 0.3s ease; }
+        .btn-start { background: #2979ff; color: white; }
+        .btn-stop { background: #f44336; color: white; }
+        
+        /* Günlük alanı */
+        .log-container { flex: 1; overflow-y: auto; background: #1a1a1a; border-radius: 8px; padding: 10px; }
+        .log-title { font-size: 0.9rem; margin-top: 0; margin-bottom: 6px; color: #ffb300; border-bottom: 1px solid #333; padding-bottom: 3px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { color: #2979ff; padding: 4px; border-bottom: 2px solid #333; text-align: left; }
+        td { padding: 5px; border-bottom: 1px solid #2a2a2a; color: #ddd; text-align: left; }
+        tr:nth-child(even) { background: #222; }
+
+        /* Footer Kapsayıcısı */
+        .footer-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            margin-top: auto;
+        }
+
+        .footer { 
+            color: #666; 
+            font-size: 0.75rem; 
+            text-align: left;
+        }
+
+        /* İdeal Kare Ayarlar Butonu */
+        .settings-btn {
+            flex: 0 0 auto !important;
+            width: 32px !important;
+            height: 32px !important;
+            min-width: unset;
+            max-width: unset;
+            padding: 0;
+            border-radius: 6px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .settings-btn:active {
+            background: #333;
+        }
+
+        /* Arka Plan Karartması (Overlay) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            z-index: 2000;
+        }
+        .modal-overlay.active { display: block; }
+
+        /* Modern Alt Açılır Ayarlar Paneli */
+        .settings-modal {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #222222;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            padding: 20px;
+            border-top: 1px solid #333;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.8);
+            z-index: 2001;
+            animation: slideUp 0.25s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .settings-modal.active { display: block; }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            color: #2979ff;
+        }
+
+        .settings-header .close-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0;
+            flex: 0;
+        }
+
+        .version-badge {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1a1a1a;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .version-badge strong {
+            color: #00e676;
+        }
+
+        .lang-title-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Özel Liste ve Radio Buton Tasarımı */
+        .lang-options {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2d2d2d;
+        }
+
+        .lang-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: #252525;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #eee;
+            transition: background 0.2s;
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        .lang-option:last-child {
+            border-bottom: none;
+        }
+
+        .lang-option:active {
+            background: #333;
+        }
+
+        .lang-option input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #666;
+            border-radius: 50%;
+            outline: none;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .lang-option input[type="radio"]:checked {
+            border-color: #2979ff;
+        }
+
+        .lang-option input[type="radio"]:checked::before {
+            content: '';
+            position: absolute;
+            top: 3px; left: 3px;
+            width: 10px; height: 10px;
+            background: #2979ff;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="controls">
+    <div class="stats-grid">
+        <div class="stat-box">
+            <span data-i18n="currentSpeed">Anlık Hız</span>
+            <strong id="speed">0</strong> <small>km/s</small>
+        </div>
+        <div class="stat-box top">
+            <span data-i18n="topSpeed">Top Speed</span>
+            <strong id="topSpeed">0</strong> <small>km/s</small>
+        </div>
+        <div class="stat-box dist">
+            <span data-i18n="distance">Mesafe</span>
+            <strong id="distance">0.00</strong> <small>km</small>
+        </div>
+        <div class="stat-box">
+            <span data-i18n="points">Nokta</span>
+            <strong id="pointCount">0</strong>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-start" id="toggleBtn" onclick="toggleTracking()">Başlat</button>
+    </div>
+
+    <div class="log-container">
+        <div class="log-title" data-i18n="logTitle">⏱️ Canlı Sürüş Günlüğü</div>
+        <table>
+            <thead>
+                <tr>
+                    <th data-i18n="thTime">Saat</th>
+                    <th data-i18n="thCoord">Koordinat</th>
+                    <th data-i18n="thSpeed">Hız</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Alt Kısım: Hizalanmış Footer ve Ayarlar Butonu -->
+    <div class="footer-container">
+        <div class="footer" data-i18n="footerText">
+            ©Ekmel Özalp Tüm Hakları Saklıdır
+        </div>
+        <button class="settings-btn" onclick="toggleSettingsModal()" title="Ayarlar">⚙️</button>
+    </div>
+</div>
+
+<!-- Modal Overlay & Yeni Tasarım Ayarlar Penceresi -->
+<div class="modal-overlay" id="modalOverlay" onclick="toggleSettingsModal()"></div>
+
+<div class="settings-modal" id="settingsModal">
+    <div class="settings-header">
+        <span data-i18n="settingsTitle">⚙️ Ayarlar</span>
+        <button class="close-btn" onclick="toggleSettingsModal()">✕</button>
+    </div>
+
+    <div class="version-badge">
+        <span data-i18n="appVersion">Uygulama Sürümü</span>
+        <strong>v2.0</strong>
+    </div>
+
+    <span class="lang-title-label" data-i18n="languageLabel">Dil Seçimi</span>
+
+    <div class="lang-options">
+        <label class="lang-option" onclick="changeLanguage('tr')">
+            <span>Türkçe</span>
+            <input type="radio" name="lang" value="tr" id="lang-tr" checked>
+        </label>
+        <label class="lang-option" onclick="changeLanguage('en')">
+            <span>English</span>
+            <input type="radio" name="lang" value="en" id="lang-en">
+        </label>
+        <label class="lang-option" onclick="changeLanguage('ru')">
+            <span>Русский</span>
+            <input type="radio" name="lang" value="ru" id="lang-ru">
+        </label>
+        <label class="lang-option" onclick="changeLanguage('zh')">
+            <span>中文</span>
+            <input type="radio" name="lang" value="zh" id="lang-zh">
+        </label>
+    </div>
+</div>
+
+<script>
+    // Genişletilmiş Dil Sözlüğü (TR, EN, RU, ZH)
+    const translations = {
+        tr: {
+            currentSpeed: "Anlık Hız",
+            topSpeed: "Top Speed",
+            distance: "Mesafe",
+            points: "Nokta",
+            start: "Başlat",
+            stop: "Durdur",
+            logTitle: "⏱️ Canlı Sürüş Günlüğü",
+            thTime: "Saat",
+            thCoord: "Koordinat",
+            thSpeed: "Hız",
+            footerText: "©Ekmel Özalp Tüm Hakları Saklıdır",
+            settingsTitle: "⚙️ Ayarlar",
+            appVersion: "Uygulama Sürümü",
+            languageLabel: "Dil Seçimi"
+        },
+        en: {
+            currentSpeed: "Current Speed",
+            topSpeed: "Top Speed",
+            distance: "Distance",
+            points: "Points",
+            start: "Start",
+            stop: "Stop",
+            logTitle: "⏱️ Live Drive Log",
+            thTime: "Time",
+            thCoord: "Coordinates",
+            thSpeed: "Speed",
+            footerText: "©Ekmel Özalp All Rights Reserved",
+            settingsTitle: "⚙️ Settings",
+            appVersion: "App Version",
+            languageLabel: "Language"
+        },
+        ru: {
+            currentSpeed: "Текущая скорость",
+            topSpeed: "Макс. скорость",
+            distance: "Расстояние",
+            points: "Точки",
+            start: "Старт",
+            stop: "Стоп",
+            logTitle: "⏱️ Журнал поездки",
+            thTime: "Время",
+            thCoord: "Координаты",
+            thSpeed: "Скорость",
+            footerText: "©Ekmel Özalp Все права защищены",
+            settingsTitle: "⚙️ Настройки",
+            appVersion: "Версия приложения",
+            languageLabel: "Выбор языка"
+        },
+        zh: {
+            currentSpeed: "当前速度",
+            topSpeed: "最高速度",
+            distance: "距离",
+            points: "打卡点",
+            start: "开始",
+            stop: "停止",
+            logTitle: "⏱️ 实时行驶日志",
+            thTime: "时间",
+            thCoord: "坐标",
+            thSpeed: "速度",
+            footerText: "©Ekmel Özalp 保留所有权利",
+            settingsTitle: "⚙️ 设置",
+            appVersion: "应用版本",
+            languageLabel: "语言选择"
+        }
+    };
+
+    let currentLang = 'tr';
+
+    function changeLanguage(lang) {
+        currentLang = lang;
+        const t = translations[lang];
+
+        // Radio butonunu seçili hale getir
+        const radio = document.getElementById(`lang-${lang}`);
+        if(radio) radio.checked = true;
+
+        // Veri etiketlerini güncelle
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) el.textContent = t[key];
+        });
+
+        // Başlat/Durdur butonunu duruma göre güncelle
+        const btn = document.getElementById('toggleBtn');
+        if (!isTracking) {
+            btn.textContent = t.start;
+        } else {
+            btn.textContent = t.stop;
+        }
+    }
+
+    let map = L.map('map').setView([0, 0], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    let polyline = L.polyline([], {color: '#00e676', weight: 5}).addTo(map);
+    let marker = L.marker([0, 0]).addTo(map);
+    
+    let isTracking = false;
+    let routeCoords = [];
+    let maxSpeed = 0;
+    let totalDistance = 0; 
+
+    setTimeout(() => { map.invalidateSize(); }, 500);
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    navigator.geolocation.watchPosition(pos => {
+        const {latitude, longitude, speed} = pos.coords;
+        const latlng = [latitude, longitude];
+        marker.setLatLng(latlng);
+        map.setView(latlng);
+        
+        let currentSpeed = speed ? Math.round(speed * 3.6) : 0;
+        document.getElementById('speed').textContent = currentSpeed;
+
+        if (isTracking) {
+            if (currentSpeed > maxSpeed) { maxSpeed = currentSpeed; document.getElementById('topSpeed').textContent = maxSpeed; }
+            if (routeCoords.length > 0) {
+                let last = routeCoords[routeCoords.length - 1];
+                let dist = calculateDistance(last[0], last[1], latitude, longitude);
+                if (dist > 0.002) { totalDistance += dist; document.getElementById('distance').textContent = totalDistance.toFixed(2); }
+            }
+            routeCoords.push(latlng);
+            polyline.setLatLngs(routeCoords);
+            document.getElementById('pointCount').textContent = routeCoords.length;
+            
+            const tbody = document.getElementById('logTableBody');
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${new Date().toLocaleTimeString()}</td><td>${latitude.toFixed(4)},${longitude.toFixed(4)}</td><td>${currentSpeed}</td>`;
+            tbody.prepend(row);
+        }
+    }, null, { enableHighAccuracy: true });
+
+    function toggleTracking() {
+        const btn = document.getElementById('toggleBtn');
+        const t = translations[currentLang];
+        if (!isTracking) {
+            isTracking = true;
+            routeCoords = []; maxSpeed = 0; totalDistance = 0;
+            btn.textContent = t.stop;
+            btn.className = 'btn-stop';
+        } else {
+            isTracking = false;
+            btn.textContent = t.start;
+            btn.className = 'btn-start';
+        }
+    }
+
+    function toggleSettingsModal() {
+        const modal = document.getElementById('settingsModal');
+        const overlay = document.getElementById('modalOverlay');
+        modal.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+</script>
+</body>
+</html>
