@@ -13,8 +13,6 @@ Yol takip uygulaması.
 
 ​-Mesafe Sayacı: Toplamda kaç kilometre yol katettiğinizi hesaplar.
 
-​-%100 Gizli ve Yerel: Üçüncü taraf hiçbir veri toplama aracı içermez, internetiniz olmasa bile (kısmen) çalışır.
-
 ​+Kurulum
 
 -Apk dosyasını indirin ve kurun.
