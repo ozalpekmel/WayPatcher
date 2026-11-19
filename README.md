@@ -1,7 +1,7 @@
 # WayPatcher
 Yol takip uygulaması.
 
-+Gizliliğe odaklanan basit ve hafif bir GPS takip uygulamasıdır.
++Basit ve hafif bir GPS takip uygulamasıdır.
 
 ​+Hiçbir sunucuya veri göndermez, konumunuz ve hızınız tamamen kendi cihazınızda işlenir.
 
