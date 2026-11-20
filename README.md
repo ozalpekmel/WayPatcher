@@ -17,7 +17,7 @@ Yol takip uygulaması.
 
 -Apk dosyasını indirin ve kurun.
 
-​-Uygulama açıldığında konum izni verin.
+​-Uygulama açıldığında tam konum izni verin.
 
 ​-Başlat butonuna basarak rota takibini başlatın.
 
